@@ -19,7 +19,8 @@ export function usePromptOptimizer() {
   /**
    * 主优化函数
    */
-  async function optimizePrompt(userInput, options = {}) {
+  async function optimizePrompt(userInput, options = {}, hooks = {}) {
+    const { onStep } = hooks
     isOptimizing.value = true
     const steps = []
     optimizedPrompt.value = ''
@@ -37,6 +38,7 @@ export function usePromptOptimizer() {
           improvements: ['明确任务目标', '细化要求', '消除歧义'],
           status: 'success'
         })
+        onStep?.(steps, currentPrompt)
       }
 
       // Step 2: 添加角色设定
@@ -49,6 +51,7 @@ export function usePromptOptimizer() {
           improvements: ['专业角色定义', '能力边界设定'],
           status: 'success'
         })
+        onStep?.(steps, currentPrompt)
       }
 
       // Step 3: 结构化优化
@@ -61,6 +64,7 @@ export function usePromptOptimizer() {
           improvements: ['逻辑分段', '要点列举', '格式规范'],
           status: 'success'
         })
+        onStep?.(steps, currentPrompt)
       }
 
       // Step 4: 思维链优化
@@ -73,6 +77,7 @@ export function usePromptOptimizer() {
           improvements: ['步骤分解', '推理过程', '逻辑链条'],
           status: 'success'
         })
+        onStep?.(steps, currentPrompt)
       }
 
       // Step 5: 示例增强
@@ -85,6 +90,7 @@ export function usePromptOptimizer() {
           improvements: ['参考案例', '期望格式', '质量标准'],
           status: 'success'
         })
+        onStep?.(steps, currentPrompt)
       }
 
       // Step 6: 约束条件
@@ -97,6 +103,7 @@ export function usePromptOptimizer() {
           improvements: ['格式要求', '长度限制', '质量标准'],
           status: 'success'
         })
+        onStep?.(steps, currentPrompt)
       }
 
       // 评估优化质量

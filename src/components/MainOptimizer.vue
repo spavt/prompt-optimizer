@@ -10,20 +10,28 @@
                 <el-icon><Edit /></el-icon>
                 输入原始需求
               </span>
-              <el-dropdown @command="handleQuickTemplate">
-                <el-button text>
-                  快速模板 <el-icon><ArrowDown /></el-icon>
+              <div class="header-actions">
+                <el-dropdown @command="handleQuickTemplate">
+                  <el-button text>
+                    快速模板 <el-icon><ArrowDown /></el-icon>
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="ui">UI设计</el-dropdown-item>
+                      <el-dropdown-item command="code">代码生成</el-dropdown-item>
+                      <el-dropdown-item command="article">文章写作</el-dropdown-item>
+                      <el-dropdown-item command="data">数据分析</el-dropdown-item>
+                      <el-dropdown-item command="translate">翻译任务</el-dropdown-item>
+                      <el-dropdown-item command="paper">论文生成（默认提示词）</el-dropdown-item>
+                      <el-dropdown-item command="paperAntiAigc">论文降AIGC（默认提示词）</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+
+                <el-button text @click="showTemplates = true" :icon="Collection">
+                  模板库
                 </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item command="ui">UI设计</el-dropdown-item>
-                    <el-dropdown-item command="code">代码生成</el-dropdown-item>
-                    <el-dropdown-item command="article">文章写作</el-dropdown-item>
-                    <el-dropdown-item command="data">数据分析</el-dropdown-item>
-                    <el-dropdown-item command="translate">翻译任务</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+              </div>
             </div>
           </template>
 
@@ -227,6 +235,8 @@
       :original="userInput"
       :optimized="optimizedPrompt"
     />
+
+    <TemplateDrawer v-model="showTemplates" />
   </div>
 </template>
 
@@ -241,11 +251,13 @@ import {
   ArrowDown,
   CopyDocument,
   View,
-  Star
+  Star,
+  Collection
 } from '@element-plus/icons-vue'
 import { usePromptOptimizer } from '@/composables/usePromptOptimizer'
 import { useHistoryStore } from '@/stores/history'
 import { useSettingsStore } from '@/stores/settings'
+import TemplateDrawer from './TemplateDrawer.vue'
 import ComparisonDialog from './ComparisonDialog.vue'
 import { quickTemplates } from '@/utils/templates'
 
@@ -256,6 +268,7 @@ const finalOutput = ref('')
 const optimizationSteps = ref([])
 const qualityScore = ref(null)
 const showComparison = ref(false)
+const showTemplates = ref(false)
 const isOptimizing = ref(false)
 
 // 优化选项
@@ -296,7 +309,12 @@ async function handleOptimize() {
   qualityScore.value = null
 
   try {
-    const result = await optimizePrompt(userInput.value, options.value)
+    const result = await optimizePrompt(userInput.value, options.value, {
+      onStep: (steps, currentPrompt) => {
+        optimizationSteps.value = [...steps]
+        optimizedPrompt.value = currentPrompt
+      }
+    })
     
     optimizedPrompt.value = result.optimizedPrompt
     finalOutput.value = result.finalOutput
@@ -384,6 +402,7 @@ function handleQuickTemplate(command) {
     ElMessage.success(`已加载${template.name}模板`)
   }
 }
+
 </script>
 
 <style scoped lang="scss">
@@ -409,6 +428,12 @@ function handleQuickTemplate(command) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
   
   .title {
     display: flex;
