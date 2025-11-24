@@ -169,6 +169,11 @@
               </el-timeline-item>
             </el-timeline>
 
+            <div v-if="isOptimizing" class="optimizing-indicator">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              <span>正在优化中... 当前进度：{{ optimizationSteps.length }} 步</span>
+            </div>
+
             <!-- 最终结果 -->
             <div v-if="optimizedPrompt" class="final-result">
               <el-alert
@@ -252,7 +257,8 @@ import {
   CopyDocument,
   View,
   Star,
-  Collection
+  Collection,
+  Loading
 } from '@element-plus/icons-vue'
 import { usePromptOptimizer } from '@/composables/usePromptOptimizer'
 import { useHistoryStore } from '@/stores/history'
@@ -513,6 +519,18 @@ function handleQuickTemplate(command) {
         flex-wrap: wrap;
         gap: 6px;
       }
+    }
+  }
+
+  .optimizing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 0;
+    color: #606266;
+
+    .el-icon {
+      font-size: 16px;
     }
   }
   
