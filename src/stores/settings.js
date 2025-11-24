@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
-    provider: 'local', // 'openai', 'anthropic', 'local', 'custom'
+    provider: 'local', // 'openai', 'anthropic', 'local', 'custom', 'kimi', 'mota', 'deepseek'
     apiKey: '',
     model: 'gpt-3.5-turbo',
     // 自定义 API 配置
@@ -27,7 +27,8 @@ export const useSettingsStore = defineStore('settings', {
     updateSettings(newSettings) {
       Object.assign(this.$state, newSettings)
       const provider = newSettings.provider || this.provider
-      const hasCustom = provider === 'custom' && (newSettings.customApiUrl || this.customApiUrl) && (newSettings.customApiKey || this.customApiKey)
+      const customProviders = ['custom', 'kimi', 'mota', 'deepseek']
+      const hasCustom = customProviders.includes(provider) && (newSettings.customApiUrl || this.customApiUrl) && (newSettings.customApiKey || this.customApiKey)
       this.useAI = provider !== 'local' && (hasCustom || !!(newSettings.apiKey || this.apiKey))
     },
 
@@ -43,8 +44,12 @@ export const useSettingsStore = defineStore('settings', {
         this.model = 'gpt-3.5-turbo'
       } else if (provider === 'anthropic') {
         this.model = 'claude-3-sonnet'
-      } else if (provider === 'custom') {
-        this.model = this.customModel || 'gpt-3.5-turbo'
+      } else if (['custom', 'kimi', 'mota', 'deepseek'].includes(provider)) {
+        const defaultModel = getDefaultModel(provider)
+        this.customModel = this.customModel || defaultModel
+        if (!this.customApiUrl) {
+          this.customApiUrl = getDefaultApiUrl(provider) || this.customApiUrl
+        }
       }
     },
 
@@ -55,3 +60,21 @@ export const useSettingsStore = defineStore('settings', {
 
   persist: true
 })
+
+function getDefaultApiUrl(provider) {
+  const map = {
+    kimi: 'https://api.moonshot.cn/v1/chat/completions',
+    deepseek: 'https://api.deepseek.com/v1/chat/completions',
+    mota: 'https://api.mota.ai/v1/chat/completions'
+  }
+  return map[provider]
+}
+
+function getDefaultModel(provider) {
+  const map = {
+    kimi: 'moonshot-v1-8k',
+    deepseek: 'deepseek-chat',
+    mota: 'mota-chat'
+  }
+  return map[provider] || 'gpt-3.5-turbo'
+}

@@ -10,14 +10,17 @@
         <el-radio-group v-model="settings.provider">
           <el-radio value="openai">OpenAI</el-radio>
           <el-radio value="anthropic">Anthropic Claude</el-radio>
+          <el-radio value="kimi">Kimi（月之暗面）</el-radio>
+          <el-radio value="deepseek">DeepSeek</el-radio>
+          <el-radio value="mota">魔塔</el-radio>
           <el-radio value="custom">自定义API</el-radio>
           <el-radio value="local">本地优化（无需API）</el-radio>
         </el-radio-group>
       </el-form-item>
 
-      <el-form-item v-if="settings.provider !== 'local' && settings.provider !== 'custom'" label="API密钥">
+      <el-form-item v-if="settings.provider !== 'local'" label="API密钥">
         <el-input
-          v-model="settings.apiKey"
+          v-model="apiKeyComputed"
           type="password"
           placeholder="请输入API密钥"
           show-password
@@ -46,14 +49,48 @@
         </el-select>
       </el-form-item>
 
-      <el-form-item v-if="settings.provider === 'custom'" label="API地址">
-        <el-input
-          v-model="settings.customApiUrl"
-          placeholder="例如：https://your-endpoint/v1/chat/completions"
-        />
+      <el-form-item v-if="settings.provider === 'kimi'" label="模型选择">
+        <el-select v-model="settings.customModel">
+          <el-option
+            v-for="item in providerConfigs.kimi.models"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
       </el-form-item>
 
-      <el-form-item v-if="settings.provider === 'custom'" label="API密钥">
+      <el-form-item v-if="settings.provider === 'deepseek'" label="模型选择">
+        <el-select v-model="settings.customModel">
+          <el-option
+            v-for="item in providerConfigs.deepseek.models"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item v-if="settings.provider === 'mota'" label="模型选择">
+        <el-select v-model="settings.customModel">
+          <el-option
+            v-for="item in providerConfigs.mota.models"
+            :key="item.value"
+            :label="item.label"
+            :value="item.value"
+          />
+        </el-select>
+      </el-form-item>
+
+      <el-form-item v-if="customProviders.includes(settings.provider)" label="API地址">
+        <el-input
+          v-model="settings.customApiUrl"
+          :placeholder="getApiUrlPlaceholder(settings.provider)"
+        />
+        <small class="helper-text">未填写时会自动使用默认地址</small>
+      </el-form-item>
+
+      <el-form-item v-if="customProviders.includes(settings.provider)" label="API密钥">
         <el-input
           v-model="settings.customApiKey"
           type="password"
@@ -68,7 +105,7 @@
         </el-input>
       </el-form-item>
 
-      <el-form-item v-if="settings.provider === 'custom'" label="模型名称">
+      <el-form-item v-if="customProviders.includes(settings.provider)" label="模型名称">
         <el-input
           v-model="settings.customModel"
           placeholder="请输入要使用的模型名称"
@@ -135,10 +172,52 @@ const emit = defineEmits(['update:modelValue'])
 const settingsStore = useSettingsStore()
 const settings = ref({ ...settingsStore.$state })
 const testing = ref(false)
+const customProviders = ['custom']
+const presetProviders = ['openai', 'anthropic', 'kimi', 'deepseek', 'mota']
+const providerConfigs = {
+  kimi: {
+    apiUrl: 'https://api.moonshot.cn/v1/chat/completions',
+    models: [
+      { label: 'moonshot-v1-8k', value: 'moonshot-v1-8k' },
+      { label: 'moonshot-v1-32k', value: 'moonshot-v1-32k' },
+      { label: 'moonshot-v1-128k', value: 'moonshot-v1-128k' }
+    ],
+    defaultModel: 'moonshot-v1-8k'
+  },
+  deepseek: {
+    apiUrl: 'https://api.deepseek.com/v1/chat/completions',
+    models: [
+      { label: 'deepseek-chat', value: 'deepseek-chat' },
+      { label: 'deepseek-coder', value: 'deepseek-coder' }
+    ],
+    defaultModel: 'deepseek-chat'
+  },
+  mota: {
+    apiUrl: 'https://api.mota.ai/v1/chat/completions',
+    models: [
+      { label: 'mota-chat', value: 'mota-chat' },
+      { label: 'mota-pro', value: 'mota-pro' }
+    ],
+    defaultModel: 'mota-chat'
+  }
+}
 
 const visible = computed({
   get: () => props.modelValue,
   set: (val) => emit('update:modelValue', val)
+})
+
+const apiKeyComputed = computed({
+  get() {
+    return isPreset(settings.value.provider) ? settings.value.apiKey : settings.value.customApiKey
+  },
+  set(val) {
+    if (isPreset(settings.value.provider)) {
+      settings.value.apiKey = val
+    } else {
+      settings.value.customApiKey = val
+    }
+  }
 })
 
 // 监听设置变化
@@ -146,14 +225,33 @@ watch(() => settingsStore.$state, (newSettings) => {
   settings.value = { ...newSettings }
 }, { deep: true })
 
+// 监听 provider 以填充默认地址/模型
+watch(() => settings.value.provider, (provider) => {
+  ensureProviderDefaults(provider)
+})
+
+function ensureProviderDefaults(provider) {
+  if (customProviders.includes(provider)) {
+    if (!settings.value.customApiUrl) {
+      settings.value.customApiUrl = getApiUrlPlaceholder(provider)
+    }
+    if (!settings.value.customModel) {
+      settings.value.customModel = settings.value.model || 'gpt-3.5-turbo'
+    }
+  }
+}
+
 // 测试API连接
 async function testConnection() {
   const provider = settings.value.provider
-  const apiKey = provider === 'custom' ? settings.value.customApiKey : settings.value.apiKey
-  const apiUrl = provider === 'custom' ? settings.value.customApiUrl : undefined
-  const model = provider === 'custom'
-    ? (settings.value.customModel || 'gpt-3.5-turbo')
-    : settings.value.model
+  const isCustomLike = customProviders.includes(provider)
+  const apiKey = isCustomLike ? settings.value.customApiKey : settings.value.apiKey
+  const apiUrl = isCustomLike ? (settings.value.customApiUrl || getApiUrlPlaceholder(provider)) : getApiUrlPlaceholder(provider)
+  const model = (() => {
+    if (provider === 'openai' || provider === 'anthropic') return settings.value.model
+    if (isCustomLike) return settings.value.customModel || 'gpt-3.5-turbo'
+    return settings.value.customModel || settings.value.model
+  })()
 
   if (provider === 'local') {
     ElMessage.success('本地优化模式，无需API连接')
@@ -213,6 +311,14 @@ async function performRealTest({ provider, apiKey, apiUrl, model }) {
       messages: [{ role: 'user', content: 'ping' }],
       max_tokens: 5
     }
+  } else if (['kimi', 'deepseek', 'mota'].includes(provider)) {
+    url = apiUrl
+    headers.Authorization = `Bearer ${apiKey}`
+    body = {
+      model: model || providerConfigs[provider]?.defaultModel || 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: 'ping' }],
+      max_tokens: 5
+    }
   }
 
   const res = await fetch(url, {
@@ -227,6 +333,20 @@ async function performRealTest({ provider, apiKey, apiUrl, model }) {
 
   // 简单读取返回以防止未捕获的 JSON 错误
   await res.text()
+}
+
+function getApiUrlPlaceholder(provider) {
+  const map = {
+    kimi: 'https://api.moonshot.cn/v1/chat/completions',
+    deepseek: 'https://api.deepseek.com/v1/chat/completions',
+    mota: 'https://api.mota.ai/v1/chat/completions',
+    custom: 'https://your-endpoint/v1/chat/completions'
+  }
+  return map[provider] || map.custom
+}
+
+function isPreset(provider) {
+  return presetProviders.includes(provider)
 }
 
 // 保存设置

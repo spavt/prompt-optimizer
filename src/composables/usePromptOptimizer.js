@@ -10,7 +10,8 @@ export function usePromptOptimizer() {
 
   const hasAIConfig = () => {
     if (settings.provider === 'local') return false
-    if (settings.provider === 'custom') {
+    const customProviders = ['custom', 'kimi', 'mota', 'deepseek']
+    if (customProviders.includes(settings.provider)) {
       return !!(settings.customApiUrl && settings.customApiKey)
     }
     return !!settings.apiKey
@@ -219,24 +220,26 @@ export function usePromptOptimizer() {
    */
   async function callAI({ messages }) {
     const provider = settings.provider
-    const apiKey = provider === 'custom' ? settings.customApiKey : settings.apiKey
-    const apiUrl = provider === 'custom' ? settings.customApiUrl : undefined
-    const model = provider === 'custom'
-      ? (settings.customModel || settings.model || 'gpt-3.5-turbo')
+    const customProviders = ['custom', 'kimi', 'mota', 'deepseek']
+    const apiKey = customProviders.includes(provider) ? settings.customApiKey : settings.apiKey
+    const apiUrl = customProviders.includes(provider) ? (settings.customApiUrl || getDefaultApiUrl(provider)) : undefined
+    const model = customProviders.includes(provider)
+      ? (settings.customModel || getDefaultModel(provider) || settings.model || 'gpt-3.5-turbo')
       : settings.model
 
     if (provider !== 'local' && !apiKey) {
       throw new Error(provider === 'custom' ? '请先配置自定义API密钥' : '请先配置API密钥')
     }
 
-    if (provider === 'custom') {
+    if (customProviders.includes(provider)) {
       if (!apiUrl) {
         throw new Error('请先配置自定义API地址')
       }
       if (!model) {
         throw new Error('请先配置自定义模型')
       }
-      return callCustomApi({ messages, apiUrl, apiKey, model })
+      const url = apiUrl || getDefaultApiUrl(provider)
+      return callCustomApi({ messages, apiUrl: url, apiKey, model })
     }
 
     // 模拟API调用（实际项目中需要真实的API调用）
@@ -324,6 +327,24 @@ export function usePromptOptimizer() {
     }
 
     throw new Error('未能从自定义API解析到文本结果')
+  }
+
+  function getDefaultApiUrl(provider) {
+    const map = {
+      kimi: 'https://api.moonshot.cn/v1/chat/completions',
+      deepseek: 'https://api.deepseek.com/v1/chat/completions',
+      mota: 'https://api.mota.ai/v1/chat/completions'
+    }
+    return map[provider]
+  }
+
+  function getDefaultModel(provider) {
+    const map = {
+      kimi: 'moonshot-v1-8k',
+      deepseek: 'deepseek-chat',
+      mota: 'mota-chat'
+    }
+    return map[provider]
   }
 
   /**
