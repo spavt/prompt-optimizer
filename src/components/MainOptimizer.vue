@@ -174,6 +174,14 @@
               <span>正在优化中... 当前进度：{{ optimizationSteps.length }} 步</span>
             </div>
 
+            <el-alert
+              v-else-if="settingsStore.preferences?.autoGenerateOutput !== false && !modelOutputAttempted"
+              title="未生成模型输出：{{ modelOutputReason || '请检查API密钥/模型是否配置正确' }}"
+              type="info"
+              show-icon
+              :closable="false"
+            />
+
             <!-- 最终结果 -->
             <div v-if="optimizedPrompt" class="final-result">
               <el-alert
@@ -271,6 +279,8 @@ import { quickTemplates } from '@/utils/templates'
 const userInput = ref('')
 const optimizedPrompt = ref('')
 const finalOutput = ref('')
+const modelOutputAttempted = ref(false)
+const modelOutputReason = ref('')
 const optimizationSteps = ref([])
 const qualityScore = ref(null)
 const showComparison = ref(false)
@@ -315,7 +325,7 @@ async function handleOptimize() {
   qualityScore.value = null
 
   try {
-    const result = await optimizePrompt(userInput.value, options.value, {
+  const result = await optimizePrompt(userInput.value, options.value, {
       onStep: (steps, currentPrompt) => {
         optimizationSteps.value = [...steps]
         optimizedPrompt.value = currentPrompt
@@ -324,6 +334,8 @@ async function handleOptimize() {
     
     optimizedPrompt.value = result.optimizedPrompt
     finalOutput.value = result.finalOutput
+    modelOutputAttempted.value = result.modelOutputAttempted
+    modelOutputReason.value = result.modelOutputReason
     optimizationSteps.value = result.steps
     qualityScore.value = result.score
     

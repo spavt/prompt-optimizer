@@ -26,6 +26,8 @@ export function usePromptOptimizer() {
     const steps = []
     optimizedPrompt.value = ''
     let finalOutput = ''
+    let modelOutputAttempted = false
+    let modelOutputReason = ''
 
     try {
       // Step 1: 基础清晰度优化
@@ -111,8 +113,12 @@ export function usePromptOptimizer() {
       const score = evaluatePromptQuality(userInput, currentPrompt)
       optimizedPrompt.value = currentPrompt
 
+      const wantModelOutput = settings.preferences?.autoGenerateOutput !== false
+      const canCallModel = hasAIConfig()
+
       // 如果有可用的模型配置，再用优化后的提示词生成最终输出
-      if (hasAIConfig()) {
+      if (wantModelOutput && canCallModel) {
+        modelOutputAttempted = true
         try {
           const raw = await callAI({
             messages: [
@@ -124,15 +130,21 @@ export function usePromptOptimizer() {
         } catch (error) {
           console.warn('模型输出调用失败，使用优化提示词作为输出:', error)
           finalOutput = currentPrompt
+          modelOutputReason = error?.message || '模型调用失败'
         }
       } else {
         finalOutput = currentPrompt
+        if (wantModelOutput && !canCallModel) {
+          modelOutputReason = '未检测到有效的API配置，未生成模型输出'
+        }
       }
 
       return {
         original: userInput,
         optimizedPrompt: currentPrompt,
         finalOutput,
+        modelOutputAttempted,
+        modelOutputReason,
         steps,
         score
       }

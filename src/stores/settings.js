@@ -13,7 +13,8 @@ export const useSettingsStore = defineStore('settings', {
     preferences: {
       autoSave: true,
       showSteps: true,
-      useCache: true
+      useCache: true,
+      autoGenerateOutput: true
     },
     defaultStrategies: ['clarity', 'structure', 'role'],
     ui: {

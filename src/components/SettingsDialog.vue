@@ -124,6 +124,9 @@
         <el-checkbox v-model="settings.preferences.useCache">
           使用缓存加速
         </el-checkbox>
+        <el-checkbox v-model="settings.preferences.autoGenerateOutput">
+          自动调用模型生成输出
+        </el-checkbox>
       </el-form-item>
 
       <el-form-item label="默认优化策略">
