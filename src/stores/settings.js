@@ -14,7 +14,10 @@ export const useSettingsStore = defineStore('settings', {
       autoSave: true,
       showSteps: true,
       useCache: true,
-      autoGenerateOutput: true
+      autoGenerateOutput: true,
+      requestTimeout: 15000,
+      retryTimes: 1,
+      debugMode: false
     },
     defaultStrategies: ['clarity', 'structure', 'role'],
     ui: {

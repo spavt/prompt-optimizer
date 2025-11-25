@@ -196,13 +196,18 @@
                 <pre>{{ optimizedPrompt }}</pre>
               </div>
 
-              <div
-                v-if="finalOutput && finalOutput !== optimizedPrompt"
-                class="result-content mt-2"
-              >
-                <h4>模型输出</h4>
-                <pre>{{ finalOutput }}</pre>
-              </div>
+      <div
+        v-if="finalOutput && finalOutput !== optimizedPrompt"
+        class="result-content mt-2"
+      >
+        <h4>模型输出</h4>
+        <pre>{{ finalOutput }}</pre>
+      </div>
+
+      <div v-if="settingsStore.preferences?.debugMode && debugLogs.length" class="result-content debug-log mt-2">
+        <h4>调用调试</h4>
+        <pre>{{ formatDebugLogs(debugLogs) }}</pre>
+      </div>
 
               <!-- 评分展示 -->
               <div class="score-display" v-if="qualityScore">
@@ -286,6 +291,7 @@ const qualityScore = ref(null)
 const showComparison = ref(false)
 const showTemplates = ref(false)
 const isOptimizing = ref(false)
+const debugLogs = ref([])
 
 // 优化选项
 const options = ref({
@@ -336,6 +342,7 @@ async function handleOptimize() {
     finalOutput.value = result.finalOutput
     modelOutputAttempted.value = result.modelOutputAttempted
     modelOutputReason.value = result.modelOutputReason
+    debugLogs.value = result.debugLogs || []
     optimizationSteps.value = result.steps
     qualityScore.value = result.score
     
@@ -561,6 +568,11 @@ function handleQuickTemplate(command) {
         font-size: 14px;
         line-height: 1.6;
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+
+      &.debug-log {
+        background: #1f2d3d;
+        color: #e4e7ed;
       }
     }
     

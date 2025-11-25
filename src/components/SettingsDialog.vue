@@ -129,6 +129,29 @@
         </el-checkbox>
       </el-form-item>
 
+      <el-form-item label="调用鲁棒性">
+        <div class="inline-inputs">
+          <el-input-number
+            v-model="settings.preferences.requestTimeout"
+            :min="3000"
+            :max="60000"
+            :step="1000"
+            label="超时时间(ms)"
+          />
+          <el-input-number
+            v-model="settings.preferences.retryTimes"
+            :min="0"
+            :max="3"
+            label="重试次数"
+          />
+          <el-switch
+            v-model="settings.preferences.debugMode"
+            active-text="调试模式"
+          />
+        </div>
+        <small class="helper-text">超时/重试仅作用于模型调用，调试模式会记录请求/响应用于排查</small>
+      </el-form-item>
+
       <el-form-item label="默认优化策略">
         <el-checkbox-group v-model="settings.defaultStrategies">
           <el-checkbox label="clarity">清晰度优化</el-checkbox>
@@ -386,5 +409,15 @@ function resetSettings() {
 
 .el-form-item {
   margin-bottom: 24px;
+}
+
+.inline-inputs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+
+  .el-input-number {
+    width: 140px;
+  }
 }
 </style>

@@ -7,6 +7,7 @@ export function usePromptOptimizer() {
   const settings = useSettingsStore()
   const isOptimizing = ref(false)
   const optimizedPrompt = ref('')
+  const debugLogs = ref([])
 
   const hasAIConfig = () => {
     if (settings.provider === 'local') return false
@@ -146,13 +147,15 @@ export function usePromptOptimizer() {
         modelOutputAttempted,
         modelOutputReason,
         steps,
-        score
+        score,
+        debugLogs: settings.preferences?.debugMode ? [...debugLogs.value] : []
       }
     } catch (error) {
       console.error('优化过程出错:', error)
       throw error
     } finally {
       isOptimizing.value = false
+      debugLogs.value = []
     }
   }
 
@@ -251,7 +254,7 @@ export function usePromptOptimizer() {
         throw new Error('请先配置自定义模型')
       }
       const url = apiUrl || getDefaultApiUrl(provider)
-      return callCustomApi({ messages, apiUrl: url, apiKey, model })
+      return callWithResilience(() => callCustomApi({ messages, apiUrl: url, apiKey, model }), { provider, apiUrl: url, model })
     }
 
     // 模拟API调用（实际项目中需要真实的API调用）
@@ -305,7 +308,7 @@ export function usePromptOptimizer() {
     return text.trim()
   }
 
-  async function callCustomApi({ messages, apiUrl, apiKey, model }) {
+  async function callCustomApi({ messages, apiUrl, apiKey, model }, controller) {
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -315,7 +318,8 @@ export function usePromptOptimizer() {
       body: JSON.stringify({
         model,
         messages
-      })
+      }),
+      signal: controller?.signal
     })
 
     if (!response.ok) {
@@ -339,6 +343,46 @@ export function usePromptOptimizer() {
     }
 
     throw new Error('未能从自定义API解析到文本结果')
+  }
+
+  async function callWithResilience(fn, meta) {
+    const prefs = settings.preferences || {}
+    const timeout = prefs.requestTimeout || 15000
+    const retries = prefs.retryTimes || 0
+    const debugMode = prefs.debugMode
+
+    let lastError
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const start = Date.now()
+      try {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), timeout)
+        const result = await fn(controller)
+        clearTimeout(timer)
+        if (debugMode) {
+          debugLogs.value.push({
+            attempt: attempt + 1,
+            duration: Date.now() - start,
+            meta,
+            status: 'success'
+          })
+        }
+        return result
+      } catch (error) {
+        lastError = error
+        if (debugMode) {
+          debugLogs.value.push({
+            attempt: attempt + 1,
+            duration: Date.now() - start,
+            meta,
+            status: 'error',
+            message: error?.message || String(error)
+          })
+        }
+        if (attempt === retries) break
+      }
+    }
+    throw lastError
   }
 
   function getDefaultApiUrl(provider) {
